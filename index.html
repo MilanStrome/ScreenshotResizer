@@ -272,6 +272,23 @@ html.dark .size-badge{background:#14532d;color:#86efac}
       </div>
     </div>
 
+
+        <div id="customSection" style="display:none">
+          <div class="sec-label">Custom size</div>
+          <div class="custom-grid">
+            <div><label>Width (px)</label><input type="number" id="cw" placeholder="1920"></div>
+            <div><label>Height (px)</label><input type="number" id="ch" placeholder="1080"></div>
+          </div>
+          <div class="inline-save">
+            <input type="text" id="presetName" placeholder="Preset name..." style="flex:1;font-size:12px;padding:5px 8px">
+            <button class="mini-btn" id="savePresetBtn">
+              <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+              Save
+            </button>
+          </div>
+          <div class="preset-row" id="savedPresets"></div>
+        </div>
+
     <div>
       <div class="sec-label">Fit mode</div>
       <div class="fit-opts">
@@ -349,21 +366,6 @@ html.dark .size-badge{background:#14532d;color:#86efac}
       </div>
     </div>
 
-    <div id="customSection" style="display:none">
-      <div class="sec-label">Custom size</div>
-      <div class="custom-grid">
-        <div><label>Width (px)</label><input type="number" id="cw" placeholder="1920"></div>
-        <div><label>Height (px)</label><input type="number" id="ch" placeholder="1080"></div>
-      </div>
-      <div class="inline-save">
-        <input type="text" id="presetName" placeholder="Preset name..." style="flex:1;font-size:12px;padding:5px 8px">
-        <button class="mini-btn" id="savePresetBtn">
-          <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
-          Save
-        </button>
-      </div>
-      <div class="preset-row" id="savedPresets"></div>
-    </div>
     <div>
       <div class="sec-label1">● BUILT AS A TOOL, USED LIKE A WEAPON.</div>
       <!-- <div class="naming-opts">
