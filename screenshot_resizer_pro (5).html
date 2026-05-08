@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Batch resize game screenshots for all major app stores in seconds. Auto-detects portrait & landscape, preserves language folder structure, exports as ZIP.">
+<meta name="keywords" content="screenshot resizer, app store screenshots, Google Play, Apple App Store, Amazon, Microsoft Store, bulk resize, game screenshots">
+<meta name="author" content="RV">
+<meta property="og:title" content="Screenshot Resizer • RV">
+<meta property="og:description" content="Batch resize game screenshots for all major app stores in seconds. Auto-detects portrait & landscape, preserves language folder structure, exports as ZIP.">
+<title>Screenshot Resizer • RV</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+/* ── LIGHT / DARK TOKENS ── */
+:root{
+  --bg:#f5f5f4;--surface:#fff;--border:#e5e7eb;--border2:#d1d5db;
+  --text:#1c1c1e;--text2:#374151;--text3:#6b7280;--text3:#9ca3af;
+  --accent:#2563eb;--accent-bg:#eff6ff;--accent-border:#bfdbfe;--accent-dark:#1d4ed8;
+  --input-bg:#fff;--sidebar-bg:#fff;--card-bg:#fff;
+  --stat-bg:#f9fafb;--stat-border:#f3f4f6;
+  --tree-root-bg:#f0fdf4;--tree-root-border:#bbf7d0;--tree-root-color:#16a34a;
+  --warn-bg:#fef3c7;--warn-border:#fde68a;--warn-color:#92400e;
+  --skip-bg:#f9fafb;--skip-color:#9ca3af;
+  --hint-bg:#f3f4f6;
+  --log-bg:#1e1e2e;
+  --toggle-track:#e5e7eb;--toggle-thumb:#fff;
+  --shadow:0 1px 3px rgba(0,0,0,.08);
+}
+html.dark{
+  --bg:#0f1117;--surface:#1a1d27;--border:#2d3148;--border2:#3d4166;
+  --text:#f1f5f9;--text2:#cbd5e1;--text3:#94a3b8;--text3:#64748b;
+  --accent:#3b82f6;--accent-bg:#1e2a4a;--accent-border:#2d4a8a;--accent-dark:#2563eb;
+  --input-bg:#1a1d27;--sidebar-bg:#13151f;--card-bg:#1a1d27;
+  --stat-bg:#13151f;--stat-border:#2d3148;
+  --tree-root-bg:#0d2818;--tree-root-border:#166534;--tree-root-color:#4ade80;
+  --warn-bg:#2d1f00;--warn-border:#78350f;--warn-color:#fbbf24;
+  --skip-bg:#13151f;--skip-color:#64748b;
+  --hint-bg:#13151f;
+  --log-bg:#0d0f18;
+  --toggle-track:#3b82f6;--toggle-thumb:#fff;
+}
+
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .2s,color .2s}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10;transition:background .2s,border-color .2s}
+.topbar h1{font-size:15px;font-weight:600;color:var(--text)}
+.topbar .ver{font-size:11px;color:var(--text3);background:var(--stat-bg);padding:2px 8px;border-radius:20px;border:1px solid var(--border)}
+.logo-icon{width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-icon svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+
+/* ── DARK MODE TOGGLE ── */
+.dm-toggle{display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none}
+.dm-toggle span{font-size:12px;color:var(--text3)}
+.toggle-track{width:36px;height:20px;background:var(--toggle-track);border-radius:10px;position:relative;transition:background .2s;flex-shrink:0}
+.toggle-thumb{width:16px;height:16px;background:var(--toggle-thumb);border-radius:50%;position:absolute;top:2px;left:2px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+html.dark .toggle-thumb{left:18px}
+
+/* ── LAYOUT ── */
+.main{display:grid;grid-template-columns:272px 1fr;min-height:calc(100vh - 49px)}
+.sidebar{background:var(--sidebar-bg);border-right:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:18px;overflow-y:auto;transition:background .2s,border-color .2s}
+.content{padding:16px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.sec-label{font-size:10.5px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+.sec-label1{font-size:10.5px;font-weight:400;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+
+.card{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:14px;transition:background .2s,border-color .2s}
+
+/* ── STORE GRID ── */
+.store-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.store-btn{border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;background:var(--surface);text-align:left;transition:all .15s;display:flex;flex-direction:column;gap:1px;user-select:none}
+.store-btn:hover{background:var(--stat-bg);border-color:var(--border2)}
+.store-btn.active{border-color:var(--accent);background:var(--accent-bg)}
+.store-btn .sname{font-size:12px;font-weight:600;color:var(--text2)}
+.store-btn .sdesc{font-size:10px;color:var(--text3)}
+.store-btn.active .sname{color:var(--accent)}
+.store-btn.active .sdesc{color:var(--accent-border)}
+.apple-sub{display:none;flex-direction:column;gap:5px;margin-top:6px;padding:8px 10px;background:var(--stat-bg);border-radius:8px;border:1px solid var(--border)}
+.apple-sub.show{display:flex}
+.apple-check{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text2);cursor:pointer;user-select:none}
+.apple-check input{cursor:pointer;accent-color:var(--accent);width:14px;height:14px}
+
+/* ── DROP ZONE ── */
+.drop-zone{border:2px dashed var(--border2);border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .15s;background:var(--stat-bg)}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--accent);background:var(--accent-bg)}
+.drop-zone .dz-icon{width:36px;height:36px;margin:0 auto 10px;color:var(--text3)}
+.drop-zone .dz-icon svg{width:36px;height:36px;stroke:currentColor;fill:none;stroke-width:1.5}
+.drop-zone p{font-size:13px;color:var(--text3);font-weight:500}
+.drop-zone small{font-size:11px;color:var(--text3);display:block;margin-top:4px}
+.drop-zone .path-hint{font-size:11px;color:var(--text3);margin-top:8px;font-family:'Courier New',monospace;background:var(--hint-bg);padding:5px 10px;border-radius:6px;display:inline-block}
+
+/* ── FOLDER TREE ── */
+.tree{display:flex;flex-direction:column;gap:3px;max-height:200px;overflow-y:auto;margin-top:10px}
+.tree-root{font-size:12px;font-weight:600;color:var(--tree-root-color);padding:5px 8px;background:var(--tree-root-bg);border-radius:7px;border:1px solid var(--tree-root-border);display:flex;align-items:center;gap:6px}
+.tree-root svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0}
+.tree-screenshots{font-size:11.5px;color:var(--text2);padding:4px 8px 4px 20px;display:flex;align-items:center;gap:5px}
+.tree-screenshots svg{width:13px;height:13px;stroke:var(--text3);fill:none;stroke-width:2;flex-shrink:0}
+.tree-lang{font-size:11px;color:var(--text3);padding:3px 8px 3px 36px;display:flex;align-items:center;justify-content:space-between}
+.tree-lang-name{display:flex;align-items:center;gap:5px}
+.tree-lang-name svg{width:12px;height:12px;stroke:var(--text3);fill:none;stroke-width:2;flex-shrink:0}
+.lang-count{font-size:10px;color:var(--text3);background:var(--hint-bg);padding:1px 6px;border-radius:8px}
+.warn-list{display:flex;flex-direction:column;gap:3px;margin-top:8px}
+.warn-item{font-size:11px;color:var(--warn-color);background:var(--warn-bg);padding:4px 8px;border-radius:6px;border:1px solid var(--warn-border)}
+.skipped-item{font-size:11px;color:var(--skip-color);background:var(--skip-bg);padding:3px 8px;border-radius:6px}
+
+/* ── OUTPUT FOLDER NAME ── */
+.outfolder-row{display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 10px;background:var(--stat-bg);border-radius:8px;border:1px solid var(--border)}
+.outfolder-row label{font-size:11px;color:var(--text3);white-space:nowrap;font-weight:500}
+.outfolder-row input{flex:1;font-size:12px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);outline:none}
+.outfolder-row input:focus{border-color:var(--accent)}
+
+/* ── BADGES ── */
+.badge{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;flex-shrink:0}
+.badge-l{background:#dbeafe;color:#1e40af}
+.badge-p{background:#fce7f3;color:#9d174d}
+html.dark .badge-l{background:#1e3a5f;color:#93c5fd}
+html.dark .badge-p{background:#3d1a2e;color:#f9a8d4}
+
+/* ── FIT MODE ── */
+.fit-opts{display:flex;gap:5px}
+.fit-opt{flex:1;border:1px solid var(--border);border-radius:7px;padding:8px 5px;cursor:pointer;text-align:center;font-size:12px;font-weight:500;color:var(--text3);background:var(--surface);transition:all .15s;user-select:none}
+.fit-opt:hover{background:var(--stat-bg)}
+.fit-opt.active{border-color:var(--accent);background:var(--accent-bg);color:var(--accent)}
+
+/* ── PAD COLOR ── */
+.color-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.color-swatch{width:24px;height:24px;border-radius:5px;cursor:pointer;border:2px solid transparent;transition:all .1s}
+.color-swatch:hover{transform:scale(1.1)}
+.color-swatch.active{border-color:var(--accent)}
+.color-swatch.checker{background-image:linear-gradient(45deg,#aaa 25%,transparent 25%),linear-gradient(-45deg,#aaa 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#aaa 75%),linear-gradient(-45deg,transparent 75%,#aaa 75%);background-size:6px 6px;background-position:0 0,0 3px,3px -3px,-3px 0;background-color:#fff}
+input[type=color]{width:28px;height:28px;padding:0;border:1px solid var(--border);border-radius:5px;cursor:pointer;background:none}
+
+/* ── FORMAT ── */
+.fmt-toggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.fmt-btn{flex:1;padding:7px;font-size:12px;font-weight:500;border:none;background:var(--surface);color:var(--text3);cursor:pointer;transition:all .15s}
+.fmt-btn.active{background:var(--accent);color:#fff}
+.fmt-btn:not(.active):hover{background:var(--stat-bg)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+
+/* ── INPUTS ── */
+select,input[type=text],input[type=number]{width:100%;font-size:13px;padding:6px 9px;border:1px solid var(--border);border-radius:7px;background:var(--input-bg);color:var(--text);outline:none;transition:border-color .15s}
+select:focus,input[type=text]:focus,input[type=number]:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+.naming-opts{display:flex;flex-direction:column;gap:6px}
+.naming-opt{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);cursor:pointer;user-select:none}
+.naming-opt input{accent-color:var(--accent);cursor:pointer;width:14px;height:14px}
+
+/* ── CUSTOM SIZE ── */
+.custom-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.custom-grid label{font-size:11px;color:var(--text3);display:block;margin-bottom:3px}
+.inline-save{display:flex;gap:6px;margin-top:8px}
+.preset-row{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.preset-tag{font-size:11px;padding:3px 8px;border-radius:10px;border:1px solid var(--border);cursor:pointer;background:var(--surface);color:var(--text3);display:inline-flex;align-items:center;gap:3px}
+.preset-tag:hover{background:var(--stat-bg)}
+.preset-tag.saved{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent)}
+.tag-x{cursor:pointer;opacity:.5;font-size:13px;line-height:1}
+.tag-x:hover{opacity:1}
+
+/* ── BUTTONS ── */
+.convert-btn{width:100%;padding:11px;font-size:14px;font-weight:600;background:var(--accent);color:#fff;border:none;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .15s}
+.convert-btn:hover:not(:disabled){background:var(--accent-dark)}
+.convert-btn:active:not(:disabled){transform:scale(.99)}
+.convert-btn:disabled{opacity:.35;cursor:not-allowed}
+.export-row{display:flex;gap:8px}
+.export-btn{flex:1;padding:9px;font-size:13px;font-weight:500;border:1px solid var(--border);border-radius:9px;cursor:pointer;background:var(--surface);color:var(--text2);display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s}
+.export-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0}
+.export-btn:hover:not(:disabled){background:var(--stat-bg);border-color:var(--border2)}
+.export-btn:disabled{opacity:.3;cursor:not-allowed}
+.export-btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.export-btn.primary:hover:not(:disabled){background:var(--accent-dark)}
+.mini-btn{padding:5px 10px;font-size:11px;font-weight:500;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--surface);color:var(--text3);display:inline-flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap}
+.mini-btn:hover{background:var(--stat-bg)}
+.mini-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2}
+
+/* ── TABS ── */
+.tab-row{display:flex;border-bottom:1px solid var(--border);margin-bottom:12px}
+.tab{padding:8px 14px;font-size:12px;font-weight:500;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab:hover{color:var(--text2)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ── PREVIEW ── */
+.preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+.prev-item{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
+.prev-thumb{width:100%;aspect-ratio:16/9;object-fit:contain;background:var(--stat-bg);display:block}
+.prev-thumb.portrait{aspect-ratio:9/16}
+.prev-info{padding:5px 7px}
+.prev-info p{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pbadge{font-size:9px;padding:1px 5px;border-radius:8px;display:inline-block;margin-top:2px;font-weight:600}
+.prev-lang{font-size:9px;color:var(--text3);margin-top:1px}
+
+/* ── LOG ── */
+.log-box{background:var(--log-bg);border-radius:8px;padding:10px 12px;font-size:11.5px;font-family:'Courier New',Courier,monospace;color:#94a3b8;max-height:200px;overflow-y:auto;line-height:1.8}
+.log-ok{color:#4ade80}.log-warn{color:#fbbf24}.log-err{color:#f87171}.log-info{color:#94a3b8}
+
+/* ── STATS ── */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.stat{background:var(--stat-bg);border-radius:8px;padding:10px;text-align:center;border:1px solid var(--stat-border)}
+.stat .sv{font-size:22px;font-weight:700;color:var(--text)}
+.stat .sv.green{color:#16a34a}.stat .sv.amber{color:#d97706}
+.stat .sl{font-size:10.5px;color:var(--text3);margin-top:2px}
+
+/* ── PROGRESS ── */
+.progress-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .2s;width:0%}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3)}
+.empty-state svg{width:40px;height:40px;stroke:currentColor;fill:none;stroke-width:1.2;margin:0 auto 10px;display:block;opacity:.4}
+.empty-state p{font-size:13px}
+
+.row{display:flex;gap:8px;align-items:center}
+.row label{font-size:12px;color:var(--text3);white-space:nowrap}
+
+/* ── SUMMARY TABLE ── */
+.lang-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
+.lang-table th{text-align:left;padding:6px 8px;font-size:11px;font-weight:600;color:var(--text3);border-bottom:1px solid var(--border)}
+.lang-table td{padding:5px 8px;border-bottom:1px solid var(--stat-border);color:var(--text2)}
+.lang-table tr:last-child td{border-bottom:none}
+
+/* ── COMPRESS TOGGLE ── */
+.compress-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.compress-header .sec-label{margin-bottom:0}
+.sw-track{width:34px;height:18px;background:var(--toggle-track);border-radius:9px;position:relative;transition:background .2s;flex-shrink:0}
+.sw-track.on{background:var(--accent)}
+.sw-thumb{width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:left .18s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.sw-track.on .sw-thumb{left:18px}
+.compress-panel{margin-top:10px;display:flex;flex-direction:column;gap:10px}
+.compress-panel.hidden{display:none}
+.cp-row{display:flex;flex-direction:column;gap:4px}
+.cp-row label{font-size:11px;color:var(--text3);font-weight:500}
+.seg-ctrl{display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden}
+.seg-btn{flex:1;padding:6px 4px;font-size:11px;font-weight:500;border:none;background:var(--surface);color:var(--text2);cursor:pointer;transition:all .15s;text-align:center}
+.seg-btn.active{background:var(--accent);color:#fff}
+.seg-btn:not(.active):hover{background:var(--stat-bg)}
+.compress-hint{font-size:10.5px;color:var(--text3);background:var(--stat-bg);border-radius:6px;padding:5px 8px;line-height:1.5;border:1px solid var(--border)}
+.size-badge{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;background:#dcfce7;color:#166534}
+html.dark .size-badge{background:#14532d;color:#86efac}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+#folderInput{display:none}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo-icon">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M3 9h18M9 21h6M12 17v4"/></svg>
+  </div>
+  <h1>Screenshot Resizer •</h1>
+  <span class="ver">RV</span>
+  <div class="topbar-right">
+    <div class="dm-toggle" id="dmToggle" title="Toggle dark mode">
+      <span id="dmLabel">Dark</span>
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <div>
+      <div class="sec-label">Store targets</div>
+      <div class="store-grid" id="storeGrid"></div>
+      <div class="apple-sub" id="appleSub">
+        <div class="apple-check"><input type="checkbox" id="ap65" checked><label for="ap65">iPhone 6.5" (1242×2688)</label></div>
+        <div class="apple-check"><input type="checkbox" id="ap69" checked><label for="ap69">iPhone 6.9" (1290×2796)</label></div>
+        <div class="apple-check"><input type="checkbox" id="apipad" checked><label for="apipad">iPad Pro 13" (2048×2732)</label></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-label">Fit mode</div>
+      <div class="fit-opts">
+        <div class="fit-opt active" data-fit="pad">Pad</div>
+        <div class="fit-opt" data-fit="crop">Crop</div>
+        <div class="fit-opt" data-fit="stretch">Stretch</div>
+      </div>
+    </div>
+
+    <div id="padColorSection">
+      <div class="sec-label">Pad color</div>
+      <div class="color-row">
+        <div class="color-swatch active" style="background:#000" data-hex="#000000"></div>
+        <div class="color-swatch" style="background:#fff;border:1.5px solid #e5e7eb" data-hex="#ffffff"></div>
+        <div class="color-swatch checker" data-hex="transparent"></div>
+        <input type="color" id="padColor" value="#000000">
+        <span id="padHexLabel" style="font-size:11px;color:var(--text3)">#000000</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-label">Output format</div>
+      <div class="fmt-toggle">
+        <button class="fmt-btn active" data-fmt="png">PNG</button>
+        <button class="fmt-btn" data-fmt="jpg">JPG</button>
+      </div>
+      <div id="qualitySection" style="display:none;margin-top:10px">
+        <div class="row">
+          <label>Quality</label>
+          <input type="range" id="quality" min="1" max="100" value="100" style="flex:1">
+          <span id="qualVal" style="font-size:12px;min-width:32px;text-align:right;color:var(--text3);font-weight:500">100%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPRESS OUTPUT -->
+    <div>
+      <div class="compress-header" id="compressHeader">
+        <div class="sec-label">Compress output</div>
+        <div class="sw-track" id="compressTrack"><div class="sw-thumb"></div></div>
+      </div>
+      <div class="compress-panel hidden" id="compressPanel">
+        <div class="cp-row">
+          <label>Format override</label>
+          <div class="seg-ctrl">
+            <div class="seg-btn active" data-cfmt="auto">Auto</div>
+            <div class="seg-btn" data-cfmt="jpg">Force JPG</div>
+            <div class="seg-btn" data-cfmt="png">Force PNG</div>
+          </div>
+        </div>
+        <div class="cp-row" id="cJpgQualRow">
+          <label>JPG quality — <span id="cJpgQualLabel">85%</span></label>
+          <input type="range" id="cJpgQual" min="1" max="100" value="85">
+        </div>
+        <div class="cp-row" id="cPngLevelRow" style="display:none">
+          <label>PNG compression level</label>
+          <div class="seg-ctrl">
+            <div class="seg-btn active" data-plevel="light">Light</div>
+            <div class="seg-btn" data-plevel="medium">Medium</div>
+            <div class="seg-btn" data-plevel="aggressive">Aggressive</div>
+          </div>
+        </div>
+        <div class="compress-hint" id="compressHint">
+          Auto: JPG input → JPG out · PNG input → PNG out<br>
+          Microsoft store always outputs PNG regardless.
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-label">File naming</div>
+      <div class="naming-opts">
+        <label class="naming-opt"><input type="radio" name="naming" value="original" checked> Keep original filenames</label>
+        <label class="naming-opt"><input type="radio" name="naming" value="auto"> Auto-rename (store_lang_01)</label>
+      </div>
+    </div>
+
+    <div id="customSection" style="display:none">
+      <div class="sec-label">Custom size</div>
+      <div class="custom-grid">
+        <div><label>Width (px)</label><input type="number" id="cw" placeholder="1920"></div>
+        <div><label>Height (px)</label><input type="number" id="ch" placeholder="1080"></div>
+      </div>
+      <div class="inline-save">
+        <input type="text" id="presetName" placeholder="Preset name..." style="flex:1;font-size:12px;padding:5px 8px">
+        <button class="mini-btn" id="savePresetBtn">
+          <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+          Save
+        </button>
+      </div>
+      <div class="preset-row" id="savedPresets"></div>
+    </div>
+    <div>
+      <div class="sec-label1">● BUILT AS A TOOL, USED LIKE A WEAPON.</div>
+      <!-- <div class="naming-opts">
+        <label class="naming-opt"><input type="radio" name="naming" value="original" checked> Keep original filenames</label>
+        <label class="naming-opt"><input type="radio" name="naming" value="auto"> Auto-rename (store_lang_01)</label>
+      </div> -->
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <div class="card">
+      <div class="sec-label">Input • select game folder</div>
+      <div class="drop-zone" id="dropZone">
+        <div class="dz-icon">
+          <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/></svg>
+        </div>
+        <p>Click to select <strong>GAMENAME</strong> folder</p>
+        <small>Expected structure inside:</small>
+        <div class="path-hint">GAMENAME / Screenshots / English / *.png</div>
+      </div>
+      <input type="file" id="folderInput" webkitdirectory multiple accept=".png,.jpg,.jpeg">
+
+      <div id="folderTreeWrap" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;margin-top:12px">
+          <span style="font-size:12px;font-weight:500;color:var(--text2)" id="folderSummary"></span>
+          <button class="mini-btn" id="clearBtn">
+            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+            Clear
+          </button>
+        </div>
+        <div class="tree" id="folderTree"></div>
+        <div class="warn-list" id="warnList"></div>
+        <!-- Output folder name -->
+        <div class="outfolder-row">
+          <label>Output folder name:</label>
+          <input type="text" id="outputFolderName" placeholder="GAMENAME_converted">
+          <span style="font-size:10px;color:var(--text3)">.zip / folder</span>
+        </div>
+      </div>
+    </div>
+
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="progress-bar" id="progressBar" style="display:none">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <button class="convert-btn" id="convertBtn" disabled>
+            <svg style="width:17px;height:17px;stroke:#fff;fill:none;stroke-width:2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            <span id="convertBtnText">Convert screenshots</span>
+          </button>
+          <div class="export-row">
+            <button class="export-btn primary" id="zipBtn" disabled>
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download ZIP
+            </button>
+            <button class="export-btn" id="folderBtn" disabled>
+              <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/></svg>
+              Save to folder
+            </button>
+          </div>
+        </div>
+
+    <div class="card">
+      <div class="tab-row">
+        <div class="tab active" data-tab="preview">Preview</div>
+        <div class="tab" data-tab="log">Conversion log</div>
+        <div class="tab" data-tab="summary">Summary</div>
+      </div>
+      <div id="tabPreview">
+        <div class="empty-state" id="emptyPreview">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <p>Load a game folder to see screenshot previews</p>
+        </div>
+        <div class="preview-grid" id="previewGrid" style="display:none"></div>
+      </div>
+      <div id="tabLog" style="display:none">
+        <div class="log-box" id="logBox"><span class="log-info">No conversions yet - load a folder and hit Convert.</span></div>
+      </div>
+      <div id="tabSummary" style="display:none">
+        <div class="empty-state" id="emptySummary">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <p>Run a conversion to see the summary</p>
+        </div>
+        <div id="summaryContent" style="display:none">
+          <div class="stat-row" id="statRow"></div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:8px" id="summaryStores"></div>
+          <table class="lang-table">
+            <thead><tr><th>Language</th><th>Files</th><th>Landscape</th><th>Portrait</th></tr></thead>
+            <tbody id="langTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+const STORES={
+  google:{label:'Google Play',desc:'320–3840px',sizes:{landscape:[2208,1242],portrait:[1242,2208]}},
+  apple:{label:'Apple',desc:'3 variants',sizes:{}},
+  amazon:{label:'Amazon',desc:'1200×1920',sizes:{landscape:[1920,1200],portrait:[1200,1920]}},
+  microsoft:{label:'Microsoft',desc:'1366×768',sizes:{landscape:[1366,768],portrait:[768,1366]},forceFormat:'png'},
+  custom:{label:'Custom',desc:'any size',sizes:{}}
+};
+const APPLE_SIZES={
+  ap65:{name:'iPhone_6.5',landscape:[2688,1242],portrait:[1242,2688]},
+  ap69:{name:'iPhone_6.9',landscape:[2796,1290],portrait:[1290,2796]},
+  apipad:{name:'iPad_Pro_13',landscape:[2732,2048],portrait:[2048,2732]}
+};
+const LS='srp3_';
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let scannedFiles=[];
+let gameName='';
+let convertedFiles=null;
+let selectedStores=new Set(['google']);
+let fitMode='pad';
+let padColor='#000000';
+let outputFmt='png';
+let quality=1.0;
+let naming='original';
+let logLines=[];
+let stats={};
+let savedPresets=[];
+let darkMode=false;
+// compress state
+let compressOn=false;
+let compressFmt='auto';   // auto | jpg | png
+let compressJpgQ=0.85;
+let compressPngLevel='light'; // light | medium | aggressive
+
+// ─── LOAD SAVED SETTINGS ─────────────────────────────────────────────────────
+function loadSettings(){
+  try{
+    const s=JSON.parse(localStorage.getItem(LS+'settings')||'{}');
+    if(s.stores)selectedStores=new Set(s.stores);
+    if(s.fitMode)fitMode=s.fitMode;
+    if(s.padColor)padColor=s.padColor;
+    if(s.outputFmt)outputFmt=s.outputFmt;
+    if(s.quality!==undefined)quality=s.quality;
+    if(s.naming)naming=s.naming;
+    darkMode=s.darkMode===true;
+    compressOn=s.compressOn===true;
+    if(s.compressFmt)compressFmt=s.compressFmt;
+    if(s.compressJpgQ!==undefined)compressJpgQ=s.compressJpgQ;
+    if(s.compressPngLevel)compressPngLevel=s.compressPngLevel;
+    savedPresets=JSON.parse(localStorage.getItem(LS+'presets')||'[]');
+  }catch(e){}
+}
+function saveSettings(){
+  try{
+    localStorage.setItem(LS+'settings',JSON.stringify({
+      stores:[...selectedStores],fitMode,padColor,outputFmt,quality,naming,darkMode,
+      compressOn,compressFmt,compressJpgQ,compressPngLevel
+    }));
+  }catch(e){}
+}
+loadSettings();
+
+// ─── DARK MODE ────────────────────────────────────────────────────────────────
+function applyDarkMode(){
+  document.documentElement.classList.toggle('dark',darkMode);
+  document.getElementById('dmLabel').textContent=darkMode?'Light':'Dark';
+}
+applyDarkMode();
+document.getElementById('dmToggle').onclick=()=>{
+  darkMode=!darkMode;applyDarkMode();saveSettings();
+};
+
+// ─── APPLY LOADED SETTINGS TO UI ─────────────────────────────────────────────
+function applySettingsToUI(){
+  // Fit mode
+  document.querySelectorAll('.fit-opt').forEach(e=>{
+    e.classList.toggle('active',e.dataset.fit===fitMode);
+  });
+  document.getElementById('padColorSection').style.display=fitMode==='pad'?'':'none';
+  // Pad color
+  document.getElementById('padColor').value=padColor==='transparent'?'#000000':padColor;
+  document.getElementById('padHexLabel').textContent=padColor;
+  // Format
+  document.querySelectorAll('.fmt-btn').forEach(b=>b.classList.toggle('active',b.dataset.fmt===outputFmt));
+  document.getElementById('qualitySection').style.display=outputFmt==='jpg'?'':'none';
+  const qv=Math.round(quality*100);
+  document.getElementById('quality').value=qv;
+  document.getElementById('qualVal').textContent=qv+'%';
+  // Naming
+  document.querySelectorAll('input[name=naming]').forEach(r=>r.checked=r.value===naming);
+  // Custom section
+  document.getElementById('customSection').style.display=selectedStores.has('custom')?'':'none';
+  // Apple sub
+  if(selectedStores.has('apple'))document.getElementById('appleSub').classList.add('show');
+  // Compress
+  applyCompressUI();
+}
+applySettingsToUI();
+
+// ─── COMPRESS SECTION ─────────────────────────────────────────────────────────
+function applyCompressUI(){
+  const track=document.getElementById('compressTrack');
+  const panel=document.getElementById('compressPanel');
+  track.classList.toggle('on',compressOn);
+  panel.classList.toggle('hidden',!compressOn);
+  // fmt seg
+  document.querySelectorAll('[data-cfmt]').forEach(b=>b.classList.toggle('active',b.dataset.cfmt===compressFmt));
+  // jpg quality
+  document.getElementById('cJpgQual').value=Math.round(compressJpgQ*100);
+  document.getElementById('cJpgQualLabel').textContent=Math.round(compressJpgQ*100)+'%';
+  // png level seg
+  document.querySelectorAll('[data-plevel]').forEach(b=>b.classList.toggle('active',b.dataset.plevel===compressPngLevel));
+  updateCompressVisibility();
+}
+
+function updateCompressVisibility(){
+  const jpgInvolved=compressFmt==='jpg'||(compressFmt==='auto');
+  const pngInvolved=compressFmt==='png'||(compressFmt==='auto');
+  document.getElementById('cJpgQualRow').style.display=jpgInvolved?'':'none';
+  document.getElementById('cPngLevelRow').style.display=pngInvolved&&compressFmt!=='jpg'?'':'none';
+  const hints={
+    auto:'Auto: JPG input → JPG out · PNG input → PNG out<br>Microsoft store always outputs PNG regardless.',
+    jpg:'All files output as JPG. Microsoft store stays PNG.',
+    png:'All files output as optimized PNG. Microsoft store unaffected.'
+  };
+  document.getElementById('compressHint').innerHTML=hints[compressFmt]||hints.auto;
+}
+
+document.getElementById('compressHeader').onclick=()=>{
+  compressOn=!compressOn;applyCompressUI();saveSettings();
+};
+document.querySelectorAll('[data-cfmt]').forEach(b=>{
+  b.onclick=e=>{e.stopPropagation();compressFmt=b.dataset.cfmt;
+    document.querySelectorAll('[data-cfmt]').forEach(x=>x.classList.toggle('active',x.dataset.cfmt===compressFmt));
+    updateCompressVisibility();saveSettings();
+  };
+});
+document.getElementById('cJpgQual').oninput=e=>{
+  compressJpgQ=e.target.value/100;
+  document.getElementById('cJpgQualLabel').textContent=e.target.value+'%';
+  saveSettings();
+};
+document.querySelectorAll('[data-plevel]').forEach(b=>{
+  b.onclick=e=>{e.stopPropagation();compressPngLevel=b.dataset.plevel;
+    document.querySelectorAll('[data-plevel]').forEach(x=>x.classList.toggle('active',x.dataset.plevel===compressPngLevel));
+    saveSettings();
+  };
+});
+
+// ─── STORE GRID ───────────────────────────────────────────────────────────────
+function renderStoreGrid(){
+  const sg=document.getElementById('storeGrid');sg.innerHTML='';
+  Object.entries(STORES).forEach(([k,v])=>{
+    const b=document.createElement('div');
+    b.className='store-btn'+(selectedStores.has(k)?' active':'');
+    b.innerHTML=`<span class="sname">${v.label}</span><span class="sdesc">${v.desc}</span>`;
+    b.onclick=()=>{
+      if(k==='apple'){
+        if(selectedStores.has('apple')){selectedStores.delete('apple');document.getElementById('appleSub').classList.remove('show');}
+        else{selectedStores.add('apple');document.getElementById('appleSub').classList.add('show');}
+      } else {
+        selectedStores.has(k)?selectedStores.delete(k):selectedStores.add(k);
+      }
+      document.getElementById('customSection').style.display=selectedStores.has('custom')?'':'none';
+      renderStoreGrid();updateConvertBtn();saveSettings();
+    };
+    sg.appendChild(b);
+  });
+}
+renderStoreGrid();
+
+// ─── FIT / COLOR / FORMAT / NAMING ───────────────────────────────────────────
+document.querySelectorAll('.fit-opt').forEach(el=>{
+  el.onclick=()=>{
+    document.querySelectorAll('.fit-opt').forEach(e=>e.classList.remove('active'));
+    el.classList.add('active');fitMode=el.dataset.fit;
+    document.getElementById('padColorSection').style.display=fitMode==='pad'?'':'none';
+    saveSettings();
+  };
+});
+document.querySelectorAll('.color-swatch').forEach(sw=>{
+  sw.onclick=()=>{
+    document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active'));
+    sw.classList.add('active');padColor=sw.dataset.hex;
+    if(sw.dataset.hex!=='transparent')document.getElementById('padColor').value=sw.dataset.hex;
+    document.getElementById('padHexLabel').textContent=sw.dataset.hex;
+    saveSettings();
+  };
+});
+document.getElementById('padColor').oninput=e=>{
+  padColor=e.target.value;
+  document.getElementById('padHexLabel').textContent=e.target.value;
+  document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active'));
+  saveSettings();
+};
+document.querySelectorAll('.fmt-btn').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.fmt-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');outputFmt=b.dataset.fmt;
+    document.getElementById('qualitySection').style.display=outputFmt==='jpg'?'':'none';
+    saveSettings();
+  };
+});
+document.getElementById('quality').oninput=e=>{
+  quality=e.target.value/100;
+  document.getElementById('qualVal').textContent=e.target.value+'%';
+  saveSettings();
+};
+document.querySelectorAll('input[name=naming]').forEach(r=>r.onchange=e=>{naming=e.target.value;saveSettings();});
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>switchTab(t.dataset.tab));
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===name));
+  ['preview','log','summary'].forEach(n=>{
+    const el=document.getElementById('tab'+n.charAt(0).toUpperCase()+n.slice(1));
+    if(el)el.style.display=n===name?'':'none';
+  });
+}
+
+// ─── FOLDER SCANNING ─────────────────────────────────────────────────────────
+const dropZone=document.getElementById('dropZone');
+const folderInput=document.getElementById('folderInput');
+dropZone.onclick=()=>folderInput.click();
+dropZone.ondragover=e=>{e.preventDefault();dropZone.classList.add('drag')};
+dropZone.ondragleave=()=>dropZone.classList.remove('drag');
+dropZone.ondrop=e=>{
+  e.preventDefault();dropZone.classList.remove('drag');
+  const f=Array.from(e.dataTransfer.files);
+  if(f.length)processFileList(f);
+};
+folderInput.onchange=e=>processFileList(Array.from(e.target.files));
+document.getElementById('clearBtn').onclick=()=>{
+  scannedFiles=[];gameName='';convertedFiles=null;
+  document.getElementById('folderTreeWrap').style.display='none';
+  document.getElementById('zipBtn').disabled=true;
+  document.getElementById('folderBtn').disabled=true;
+  resetPreview();resetLog();resetSummary();updateConvertBtn();
+  folderInput.value='';
+};
+
+function processFileList(files){
+  scannedFiles=[];
+  const warns=[];const skipped=[];const byPath={};
+  files.forEach(f=>{
+    const p=f.webkitRelativePath||f.name;
+    if(!/\.(png|jpg|jpeg)$/i.test(f.name)){skipped.push(f.name);return;}
+    byPath[p]=f;
+  });
+  if(!Object.keys(byPath).length){alert('No PNG/JPG/JPEG images found.');return;}
+  const firstPath=Object.keys(byPath)[0];
+  gameName=firstPath.split('/')[0];
+  const langMap={};
+  Object.entries(byPath).forEach(([p,f])=>{
+    const parts=p.split('/');
+    let lang='default';
+    if(parts.length>=4&&/^screenshots$/i.test(parts[1])){lang=parts[2];}
+    else if(parts.length===3&&/^screenshots$/i.test(parts[1])){lang='default';}
+    else if(parts.length===3){lang=parts[1];}
+    else if(parts.length>=4){lang=parts[1];}
+    if(!langMap[lang])langMap[lang]=[];
+    langMap[lang].push({file:f,relName:f.name});
+  });
+  if(!Object.keys(langMap).length){alert('Could not find images. Check folder structure.');return;}
+  Object.entries(langMap).forEach(([lang,items])=>{
+    items.forEach(({file,relName})=>scannedFiles.push({file,lang,relName}));
+  });
+
+  // Set default output folder name
+  document.getElementById('outputFolderName').value=gameName+'_converted';
+
+  renderFolderTree(langMap,warns,skipped);
+  renderPreview();
+  updateConvertBtn();
+}
+
+function renderFolderTree(langMap,warns,skipped){
+  const wrap=document.getElementById('folderTreeWrap');wrap.style.display='';
+  const totalFiles=scannedFiles.length;const langs=Object.keys(langMap);
+  document.getElementById('folderSummary').textContent=
+    `${gameName} — ${totalFiles} image${totalFiles!==1?'s':''} across ${langs.length} language${langs.length!==1?'s':''}`;
+  const tree=document.getElementById('folderTree');tree.innerHTML='';
+  const root=document.createElement('div');root.className='tree-root';
+  root.innerHTML=`<svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> ${gameName}`;
+  tree.appendChild(root);
+  const ss=document.createElement('div');ss.className='tree-screenshots';
+  ss.innerHTML=`<svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> Screenshots`;
+  tree.appendChild(ss);
+  langs.forEach(lang=>{
+    const items=langMap[lang];
+    const row=document.createElement('div');row.className='tree-lang';
+    row.innerHTML=`
+      <span class="tree-lang-name">
+        <svg viewBox="0 0 24 24"><path d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 0 1 6.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/></svg>
+        ${lang}
+      </span>
+      <span class="lang-count">${items.length} file${items.length!==1?'s':''}</span>`;
+    tree.appendChild(row);
+  });
+  const warnEl=document.getElementById('warnList');warnEl.innerHTML='';
+  warns.forEach(w=>{const d=document.createElement('div');d.className='warn-item';d.textContent='⚠ '+w;warnEl.appendChild(d);});
+  if(skipped.length){
+    const d=document.createElement('div');d.className='skipped-item';
+    d.textContent=`Skipped ${skipped.length} non-image file${skipped.length!==1?'s':''}: ${skipped.slice(0,5).join(', ')}${skipped.length>5?'…':''}`;
+    warnEl.appendChild(d);
+  }
+}
+
+// ─── PREVIEW ──────────────────────────────────────────────────────────────────
+function renderPreview(){
+  const grid=document.getElementById('previewGrid');
+  const empty=document.getElementById('emptyPreview');
+  if(!scannedFiles.length){grid.style.display='none';empty.style.display='';return;}
+  grid.style.display='';empty.style.display='none';grid.innerHTML='';
+  const max=Math.min(scannedFiles.length,30);
+  for(let i=0;i<max;i++){
+    const {file,lang}=scannedFiles[i];
+    const item=document.createElement('div');item.className='prev-item';
+    const img=document.createElement('img');img.className='prev-thumb';
+    const url=URL.createObjectURL(file);img.src=url;
+    const info=document.createElement('div');info.className='prev-info';
+    info.innerHTML=`<p>${file.name.length>16?file.name.slice(0,14)+'…':file.name}</p><div class="prev-lang">${lang}</div>`;
+    img.onload=()=>{
+      const isL=img.naturalWidth>=img.naturalHeight;
+      if(!isL)img.className='prev-thumb portrait';
+      const b=document.createElement('span');
+      b.className='pbadge '+(isL?'badge-l':'badge-p');
+      b.textContent=isL?'L':'P';
+      info.insertBefore(b,info.querySelector('.prev-lang'));
+      URL.revokeObjectURL(url);
+    };
+    item.appendChild(img);item.appendChild(info);grid.appendChild(item);
+  }
+  if(scannedFiles.length>max){
+    const more=document.createElement('div');
+    more.style.cssText='display:flex;align-items:center;justify-content:center;min-height:70px;font-size:12px;color:var(--text3);border:1px solid var(--border);border-radius:8px;background:var(--stat-bg)';
+    more.textContent=`+${scannedFiles.length-max} more`;grid.appendChild(more);
+  }
+}
+function resetPreview(){document.getElementById('previewGrid').style.display='none';document.getElementById('emptyPreview').style.display='';document.getElementById('previewGrid').innerHTML='';}
+function resetLog(){logLines=[];document.getElementById('logBox').innerHTML='<span class="log-info">No conversions yet.</span>';}
+function resetSummary(){document.getElementById('emptySummary').style.display='';document.getElementById('summaryContent').style.display='none';}
+
+// ─── CONVERT ──────────────────────────────────────────────────────────────────
+function updateConvertBtn(){
+  document.getElementById('convertBtn').disabled=!(selectedStores.size>0&&scannedFiles.length>0);
+}
+
+function addLog(msg,type='info'){
+  const ts=new Date().toLocaleTimeString('en-US',{hour12:false});
+  logLines.push({msg,type,ts});
+  const box=document.getElementById('logBox');
+  box.innerHTML=logLines.map(l=>`<div class="log-${l.type}">[${l.ts}] ${l.msg}</div>`).join('');
+  box.scrollTop=box.scrollHeight;
+}
+
+function getTargetSizes(store){
+  if(store==='custom'){
+    const w=parseInt(document.getElementById('cw').value)||0;
+    const h=parseInt(document.getElementById('ch').value)||0;
+    if(w&&h)return[{name:'custom',landscape:[w,h],portrait:[h,w]}];
+    addLog('Custom size: enter width and height first','warn');return[];
+  }
+  if(store==='apple'){
+    const out=[];
+    if(document.getElementById('ap65').checked)out.push({...APPLE_SIZES.ap65});
+    if(document.getElementById('ap69').checked)out.push({...APPLE_SIZES.ap69});
+    if(document.getElementById('apipad').checked)out.push({...APPLE_SIZES.apipad});
+    return out;
+  }
+  const s=STORES[store];
+  return s?[{name:store,landscape:s.sizes.landscape,portrait:s.sizes.portrait}]:[];
+}
+
+async function loadImg(file){
+  return new Promise((res,rej)=>{
+    const img=new Image();const url=URL.createObjectURL(file);
+    img.onload=()=>{URL.revokeObjectURL(url);res(img);};
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('Cannot load '+file.name));};
+    img.src=url;
+  });
+}
+
+function drawResized(img,tw,th,fit,padCol){
+  const c=document.createElement('canvas');c.width=tw;c.height=th;
+  const ctx=c.getContext('2d');
+  const sw=img.naturalWidth,sh=img.naturalHeight;
+  if(fit==='stretch'){ctx.drawImage(img,0,0,tw,th);return c;}
+  if(fit==='pad'){
+    if(padCol==='transparent')ctx.clearRect(0,0,tw,th);
+    else{ctx.fillStyle=padCol;ctx.fillRect(0,0,tw,th);}
+    const sc=Math.min(tw/sw,th/sh);
+    ctx.drawImage(img,(tw-sw*sc)/2,(th-sh*sc)/2,sw*sc,sh*sc);
+  } else {
+    const sc=Math.max(tw/sw,th/sh);
+    ctx.drawImage(img,(tw-sw*sc)/2,(th-sh*sc)/2,sw*sc,sh*sc);
+  }
+  return c;
+}
+
+// ── FIX: no duplicate folder — only include subTarget when it differs from store key ──
+function getOutputPath(sf,store,subTarget,idx,explicitFmt){
+  const fmt=explicitFmt||(STORES[store]?.forceFormat||outputFmt);
+  const lang=sf.lang;
+  const base=sf.relName.replace(/\.[^.]+$/,'');
+  const prefix=document.getElementById('outputFolderName').value.trim()||gameName+'_converted';
+  const mid=subTarget!==store?`${store}/${subTarget}`:`${store}`;
+  if(naming==='auto'){
+    const name=[subTarget,lang,String(idx+1).padStart(2,'0')].join('_');
+    return`${prefix}/${mid}/${lang}/${name}.${fmt}`;
+  }
+  return`${prefix}/${mid}/${lang}/${base}.${fmt}`;
+}
+
+// ── PNG compression helper ──
+async function compressPngCanvas(canvas,level){
+  if(level==='medium'){
+    // Re-draw at slightly reduced color depth via intermediate JPEG trick at high quality then re-PNG
+    const tmp=document.createElement('canvas');tmp.width=canvas.width;tmp.height=canvas.height;
+    const ctx=tmp.getContext('2d');
+    // Draw through JPEG at 92% to flatten colors, then export as PNG
+    const jpgBlob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',0.92));
+    const jpgUrl=URL.createObjectURL(jpgBlob);
+    await new Promise(res=>{const i=new Image();i.onload=()=>{ctx.drawImage(i,0,0);URL.revokeObjectURL(jpgUrl);res();};i.src=jpgUrl;});
+    return new Promise(r=>tmp.toBlob(r,'image/png'));
+  } else {
+    // Aggressive: JPEG at 80% then re-PNG — maximum size reduction, slight quality loss
+    const tmp=document.createElement('canvas');tmp.width=canvas.width;tmp.height=canvas.height;
+    const ctx=tmp.getContext('2d');
+    const jpgBlob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',0.80));
+    const jpgUrl=URL.createObjectURL(jpgBlob);
+    await new Promise(res=>{const i=new Image();i.onload=()=>{ctx.drawImage(i,0,0);URL.revokeObjectURL(jpgUrl);res();};i.src=jpgUrl;});
+    return new Promise(r=>tmp.toBlob(r,'image/png'));
+  }
+}
+
+async function runConvert(){
+  const btn=document.getElementById('convertBtn');
+  const btnText=document.getElementById('convertBtnText');
+  const pb=document.getElementById('progressBar');
+  const pf=document.getElementById('progressFill');
+  btn.disabled=true;logLines=[];convertedFiles=[];
+  pb.style.display='';pf.style.width='0%';
+  const t0=performance.now();
+
+  const taskList=[];
+  for(const store of selectedStores){
+    const targets=getTargetSizes(store);
+    if(!targets.length)continue;
+    for(const t of targets){
+      for(const sf of scannedFiles)taskList.push({store,target:t,sf});
+    }
+  }
+  if(!taskList.length){addLog('No tasks generated. Check store selection and custom dimensions.','warn');btn.disabled=false;btnText.textContent='Convert screenshots';return;}
+
+  const total=taskList.length;
+  addLog(`Starting — ${scannedFiles.length} image(s) × targets = ${total} total conversions`,'info');
+  stats={total:scannedFiles.length,converted:0,skipped:0,time:0};
+  const byStore={};const langStats={};const langIdx={};
+  let done=0;
+
+  for(const {store,target,sf} of taskList){
+    // ── Progress text on button ──
+    btnText.textContent=`Converting ${done+1} / ${total}…`;
+
+    const langKey=`${store}/${target.name}/${sf.lang}`;
+    if(!langIdx[langKey])langIdx[langKey]=0;
+    const idx=langIdx[langKey]++;
+
+    try{
+      const img=await loadImg(sf.file);
+      const isL=img.naturalWidth>=img.naturalHeight;
+      const [tw,th]=isL?target.landscape:target.portrait;
+      if(!tw||!th){addLog(`No size for ${target.name} — skipped ${sf.file.name}`,'warn');stats.skipped++;done++;pf.style.width=Math.round(done/total*100)+'%';continue;}
+      if(img.naturalWidth<tw*0.4||img.naturalHeight<th*0.4){
+        addLog(`${sf.lang}/${sf.file.name}: source much smaller than target (${tw}×${th})`,'warn');
+      }
+      const canvas=drawResized(img,tw,th,fitMode,padColor);
+      // ── Determine output format & quality ──
+      const storeForcesPng=!!STORES[store]?.forceFormat;
+      let outFmt, outQuality;
+      if(compressOn && !storeForcesPng){
+        const srcExt=(sf.relName.match(/\.([^.]+)$/))?.[1]?.toLowerCase()||'png';
+        const srcIsJpg=srcExt==='jpg'||srcExt==='jpeg';
+        if(compressFmt==='jpg') outFmt='jpg';
+        else if(compressFmt==='png') outFmt='png';
+        else outFmt=srcIsJpg?'jpg':'png'; // auto
+        outQuality=outFmt==='jpg'?compressJpgQ:1.0;
+      } else {
+        outFmt=STORES[store]?.forceFormat||outputFmt;
+        outQuality=quality;
+      }
+      const mime=outFmt==='jpg'?'image/jpeg':'image/png';
+      // PNG level — re-encode canvas at reduced precision for medium/aggressive
+      let blob;
+      if(compressOn && outFmt==='png' && compressPngLevel!=='light'){
+        blob=await compressPngCanvas(canvas,compressPngLevel);
+      } else if(compressOn && outFmt==='jpg'){
+        blob=await new Promise(r=>canvas.toBlob(r,mime,outQuality));
+      } else {
+        blob=await new Promise(r=>canvas.toBlob(r,mime,outQuality));
+      }
+      if(!blob){addLog(`Encode failed: ${sf.file.name}`,'err');stats.skipped++;done++;pf.style.width=Math.round(done/total*100)+'%';continue;}
+      const path=getOutputPath(sf,store,target.name,idx,outFmt);
+      convertedFiles.push({path,blob});
+      if(!byStore[store])byStore[store]=0;byStore[store]++;
+      if(!langStats[sf.lang])langStats[sf.lang]={total:0,landscape:0,portrait:0};
+      langStats[sf.lang].total++;isL?langStats[sf.lang].landscape++:langStats[sf.lang].portrait++;
+      stats.converted++;
+      const kb=(blob.size/1024).toFixed(0);
+      addLog(`✓ ${path} (${tw}×${th} · ${kb} KB)`,'ok');
+    }catch(e){addLog(`Error: ${sf.lang}/${sf.file.name} — ${e.message}`,'err');stats.skipped++;}
+    done++;
+    pf.style.width=Math.round(done/total*100)+'%';
+    await new Promise(r=>setTimeout(r,0));
+  }
+
+  stats.time=((performance.now()-t0)/1000).toFixed(1);
+  pf.style.width='100%';
+  addLog(`Complete — ${stats.converted} converted, ${stats.skipped} skipped in ${stats.time}s`,'ok');
+  btnText.textContent='Convert screenshots';
+  renderSummary(byStore,langStats);
+  document.getElementById('zipBtn').disabled=false;
+  document.getElementById('folderBtn').disabled=false;
+  btn.disabled=false;
+  switchTab('summary');
+}
+document.getElementById('convertBtn').onclick=runConvert;
+
+function renderSummary(byStore,langStats){
+  document.getElementById('emptySummary').style.display='none';
+  document.getElementById('summaryContent').style.display='';
+  document.getElementById('statRow').innerHTML=`
+    <div class="stat"><div class="sv">${scannedFiles.length}</div><div class="sl">Input images</div></div>
+    <div class="stat"><div class="sv green">${stats.converted}</div><div class="sl">Converted</div></div>
+    <div class="stat"><div class="sv amber">${stats.skipped}</div><div class="sl">Skipped</div></div>
+    <div class="stat"><div class="sv">${stats.time}s</div><div class="sl">Time taken</div></div>`;
+  document.getElementById('summaryStores').innerHTML='<strong>Stores:</strong> '+
+    Object.entries(byStore).map(([k,v])=>`${STORES[k]?.label||k} (${v})`).join(' · ');
+  const tbody=document.getElementById('langTableBody');tbody.innerHTML='';
+  Object.entries(langStats).forEach(([lang,s])=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${lang}</td><td>${s.total}</td><td>${s.landscape}</td><td>${s.portrait}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ─── ZIP DOWNLOAD ─────────────────────────────────────────────────────────────
+document.getElementById('zipBtn').onclick=async()=>{
+  if(!convertedFiles||!convertedFiles.length)return;
+  const btn=document.getElementById('zipBtn');const orig=btn.innerHTML;
+  btn.textContent='Zipping…';btn.disabled=true;
+  try{
+    if(!window.JSZip){
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        s.onload=res;s.onerror=rej;document.head.appendChild(s);
+      });
+    }
+    const zip=new JSZip();
+    convertedFiles.forEach(({path,blob})=>zip.file(path,blob));
+    const content=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});
+    const a=document.createElement('a');
+    const outName=document.getElementById('outputFolderName').value.trim()||gameName+'_converted';
+    a.href=URL.createObjectURL(content);
+    a.download=outName+'.zip';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    addLog(`ZIP downloaded — ${convertedFiles.length} files`,'ok');
+  }catch(e){addLog('ZIP error: '+e.message,'err');}
+  btn.innerHTML=orig;btn.disabled=false;
+};
+
+// ─── SAVE TO FOLDER ───────────────────────────────────────────────────────────
+document.getElementById('folderBtn').onclick=async()=>{
+  if(!convertedFiles||!convertedFiles.length)return;
+  if(!window.showDirectoryPicker){alert('Save to Folder requires Chrome or Edge.\nUse Download ZIP instead.');return;}
+  const btn=document.getElementById('folderBtn');const orig=btn.innerHTML;
+  btn.textContent='Saving…';btn.disabled=true;
+  try{
+    const dir=await window.showDirectoryPicker({mode:'readwrite'});
+    let saved=0;
+    for(const {path,blob} of convertedFiles){
+      const parts=path.split('/');let cur=dir;
+      for(let i=0;i<parts.length-1;i++)cur=await cur.getDirectoryHandle(parts[i],{create:true});
+      const fh=await cur.getFileHandle(parts[parts.length-1],{create:true});
+      const w=await fh.createWritable();await w.write(blob);await w.close();saved++;
+    }
+    addLog(`Saved ${saved} files to selected folder`,'ok');switchTab('log');
+  }catch(e){if(e.name!=='AbortError')addLog('Folder save error: '+e.message,'err');}
+  btn.innerHTML=orig;btn.disabled=false;
+};
+
+// ─── CUSTOM PRESETS ───────────────────────────────────────────────────────────
+document.getElementById('savePresetBtn').onclick=()=>{
+  const name=document.getElementById('presetName').value.trim();
+  const w=parseInt(document.getElementById('cw').value)||0;
+  const h=parseInt(document.getElementById('ch').value)||0;
+  if(!name||!w||!h){alert('Enter preset name, width and height first.');return;}
+  savedPresets.push({name,w,h});
+  try{localStorage.setItem(LS+'presets',JSON.stringify(savedPresets));}catch(e){}
+  document.getElementById('presetName').value='';
+  renderSavedPresets();
+};
+function renderSavedPresets(){
+  const wrap=document.getElementById('savedPresets');wrap.innerHTML='';
+  savedPresets.forEach((p,i)=>{
+    const tag=document.createElement('span');tag.className='preset-tag saved';
+    tag.innerHTML=`${p.name} (${p.w}×${p.h}) <span class="tag-x" data-i="${i}">×</span>`;
+    tag.onclick=e=>{
+      if(e.target.dataset.i!==undefined){
+        savedPresets.splice(parseInt(e.target.dataset.i),1);
+        try{localStorage.setItem(LS+'presets',JSON.stringify(savedPresets));}catch(e){}
+        renderSavedPresets();return;
+      }
+      document.getElementById('cw').value=p.w;document.getElementById('ch').value=p.h;
+    };
+    wrap.appendChild(tag);
+  });
+}
+renderSavedPresets();
+</script>
+</body>
+</html>
